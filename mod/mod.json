@@ -1,0 +1,30 @@
+{
+  "id": "ev6-kr-android-auto-tbt-test",
+  "name": "EV6 KOR Android Auto TBT (test)",
+  "version": "0.1.0",
+  "hmgapi": ">=1.0.2",
+  "license": "AGPL-3.0",
+  "description": "Experimental next-turn display for Android Auto USB tests on CVEV KOR 260902.",
+  "live": true,
+  "system": [
+    {
+      "model": ["CVEV"],
+      "region": "KOR",
+      "firmware": "260902"
+    }
+  ],
+  "hooks": {
+    "jar": "hooks.jar",
+    "entry": "hmgapi.mods.ev6kr.aa.WiredAndroidAutoTbt",
+    "points": {
+      "gpm.sensor_source.init": "observe",
+      "gpm.navigation_status.init": "change",
+      "gpm.navigation_status.status": "observe",
+      "gpm.navigation_status.next_turn": "observe",
+      "gpm.navigation_status.next_turn_distance": "observe",
+      "gpm.receiver.send_navigation_focus": "observe",
+      "gpm.receiver.destroy": "observe",
+      "gpm.receiver_service.disconnected": "observe"
+    }
+  }
+}
