@@ -1,0 +1,89 @@
+name: EV6 유선 Android Auto TBT 문제 제보
+description: 설치 오류, Android Auto 연결, 길안내 표시 또는 종료 문제를 제보합니다.
+title: "[문제 제보] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        설치 중 문제가 생겼다면 [설치 가이드](https://github.com/EatsMyFault/EV6_KR_Wired_Android_Auto_TBT#설치와-첫-확인)를 먼저 확인해 주세요.
+
+        이슈는 공개됩니다. 로그와 사진을 첨부하기 전에 VIN, 번호판, 기기 식별 정보, 전화번호, 위치와 목적지를 가려 주세요.
+  - type: input
+    id: firmware
+    attributes:
+      label: 차량 내비 소프트웨어 버전
+      description: 차량 설정의 SW 정보에 표시되는 전체 버전을 적어 주세요. 확인이 어렵다면 모름이라고 적어 주세요.
+      placeholder: "예시 CVEV.KOR.0000.V039.001.260902"
+    validations:
+      required: true
+  - type: input
+    id: tbt-version
+    attributes:
+      label: EV6 Android Auto TBT 모드 버전
+      description: 설치를 완료하지 못했다면 받은 ZIP의 버전을 적어 주세요.
+      placeholder: "예시 v0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: hmg-api-version
+    attributes:
+      label: HMG-API 버전
+      description: HMG-API 앱 상단의 버전과 Hooks 상태를 적어 주세요. 앱을 열 수 없다면 모름이라고 적어 주세요.
+      placeholder: "예시 1.0.2 / Hooks on"
+    validations:
+      required: true
+  - type: dropdown
+    id: connection-type
+    attributes:
+      label: 휴대폰 연결 방식
+      description: 어댑터를 사용했다면 아래 재현 순서에 제품명과 차량에서 열린 화면이 Android Auto였는지 CarPlay였는지도 적어 주세요.
+      options:
+        - 차량 데이터 USB에 직접 연결
+        - USB 어댑터 또는 AI 박스를 통해 연결
+        - 무선 Android Auto
+        - 연결 전 단계 또는 모름
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: 문제가 발생한 단계
+      options:
+        - USB에서 설치 ZIP 확인
+        - 모드 설치 또는 적용
+        - Android Auto 연결 또는 USB 분리
+        - 길안내 시작 또는 다음 회전으로 전환
+        - 경로 재탐색
+        - 길안내 취소 또는 종료
+        - 기타
+    validations:
+      required: true
+  - type: input
+    id: navigation-app
+    attributes:
+      label: 지도 앱
+      description: 길안내 중 발생한 문제라면 사용한 앱을 적어 주세요.
+      placeholder: "예시 네이버지도, 티맵, 카카오내비, Google 지도"
+  - type: textarea
+    id: steps
+    attributes:
+      label: 문제가 발생하기까지의 순서
+      description: 어떤 작업을 했고 얼마나 자주 발생하는지 적어 주세요.
+      placeholder: "예시 휴대폰을 USB에 직결해 Android Auto를 열고 티맵으로 안내를 시작한 뒤 경로를 재탐색했습니다."
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 실제 증상과 기대한 동작
+      description: 길안내 문제라면 Android Auto 화면, 계기판, HUD에 각각 무엇이 표시됐는지 적어 주세요. HUD가 없는 차량은 미장착이라고 적으면 됩니다.
+      placeholder: "예시 Android Auto에 새 우회전과 거리가 떴지만 계기판에는 이전 직진 화살표가 남았습니다. 계기판에도 새 우회전과 거리가 표시되기를 기대했습니다."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 로그 또는 사진
+      description: 정차 후 HMG-API의 Mods → EV6 KOR Android Auto TBT (test) → Log에서 문제 시각 전후의 AA_TBT_010 로그를 확인해 주세요. 설치 오류를 붙여 넣거나 개인정보를 가린 로그 파일과 사진을 첨부할 수 있습니다.
+      placeholder: |
+        GPM_READY, AA_NAV_INIT, AA_STATUS, AA_TURN, AA_DISTANCE, AA_DISPLAY_SENT, AA_DISPLAY_CLEARED, AA_DISCONNECTED 중 확인된 줄을 붙여 주세요. 보이지 않는 줄은 없음이라고 적어 주세요.

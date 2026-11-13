@@ -17,7 +17,7 @@
 2. 차량 데이터 USB 포트에 꽂고 HMG-API에서 **Check USB updates**를 누릅니다. **Mods → EV6 KOR Android Auto TBT (test)**를 켜고 **Apply changes**를 누릅니다. 적용 계획에서 재시작을 요청하면 화면 안내를 따릅니다.
 3. 다른 Android Auto TBT 출력 모드가 켜져 있으면 테스트 중에는 끕니다. 순정 내비 길안내를 종료하고, 설치 USB와 캐빈프로 같은 어댑터를 빼고, 안드로이드폰을 차량 데이터 USB 포트에 직결합니다.
 4. 차량 화면에서 **Android Auto**를 열고 티맵이나 네이버지도로 길안내를 시작합니다. 첫 회전과 거리가 계기판·HUD에 뜨는지 확인합니다. 안내를 종료한 뒤 회전 아이콘이나 로딩 표시가 남는지도 확인합니다. 이후 USB 케이블을 뺍니다.
-5. **Mods → EV6 KOR Android Auto TBT (test) → Log**를 다시 열어 `AA_TBT_010` 줄을 캡처합니다. 사용한 내비 앱, USB 직결 여부, 계기판과 HUD 각각의 결과를 [Issues](https://github.com/EatsMyFault/EV6_KR_Wired_Android_Auto_TBT/issues)에 남겨주세요.
+5. **Mods → EV6 KOR Android Auto TBT (test) → Log**를 다시 열어 `AA_TBT_010` 줄을 캡처합니다. 사용한 내비 앱, USB 직결 여부, 계기판과 HUD 각각의 결과를 남겨 주세요. [문제 제보 양식](https://github.com/EatsMyFault/EV6_KR_Wired_Android_Auto_TBT/issues/new?template=bug-report.yml)
 
 | 로그 | 의미 |
 | --- | --- |
