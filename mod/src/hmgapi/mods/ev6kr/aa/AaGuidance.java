@@ -4,6 +4,7 @@ package hmgapi.mods.ev6kr.aa;
 final class AaGuidance {
     private static final int ACTIVE = 1;
     private static final int MAX_DISTANCE_METERS = 4_095_999;
+    private static final long RECOVERY_WINDOW_MS = 10_000L;
 
     interface Output {
         boolean show(AaManeuver turn, int meters);
@@ -20,6 +21,7 @@ final class AaGuidance {
     private int maneuverEvent;
     private int maneuverNumber;
     private int meters = -1;
+    private long recoverUntilMs;
 
     AaGuidance(Output output) {
         this.output = output;
@@ -50,19 +52,31 @@ final class AaGuidance {
             return;
         }
         if (maneuver != null && maneuver.icon == next.icon && maneuver.direction == next.direction
-                && maneuverEvent == event && maneuverNumber == number) return;
+                && maneuverEvent == event && maneuverNumber == number) {
+            if (recoverUntilMs != 0) {
+                recoverUntilMs = 0;
+                meters = -1;
+            }
+            return;
+        }
         expire();
         maneuver = next;
         maneuverEvent = event;
         maneuverNumber = number;
     }
 
-    void distance(Object receiver, int meters) {
+    void distance(Object receiver, int meters, long nowMs) {
         if (!canReceive(receiver) || maneuver == null) return;
         if (meters < 0 || meters > MAX_DISTANCE_METERS) {
             expire();
             return;
         }
+        // A farther point may be a new turn. Wait for its own maneuver before drawing it.
+        if (recoverUntilMs != 0 && (nowMs >= recoverUntilMs || meters > this.meters)) {
+            expire();
+            return;
+        }
+        recoverUntilMs = 0;
         this.meters = meters;
         publish();
     }
@@ -92,9 +106,16 @@ final class AaGuidance {
         status = 0;
     }
 
-    void expire() {
+    void hide(long nowMs) {
+        if (!shown) return;
+        recoverUntilMs = nowMs + RECOVERY_WINDOW_MS;
+        clear();
+    }
+
+    private void expire() {
         maneuver = null;
         meters = -1;
+        recoverUntilMs = 0;
         clear();
     }
 

@@ -21,7 +21,7 @@ body:
     attributes:
       label: EV6 Android Auto TBT 모드 버전
       description: 설치를 완료하지 못했다면 받은 ZIP의 버전을 적어 주세요.
-      placeholder: "예시 v0.1.0"
+      placeholder: "예시 v0.1.1"
     validations:
       required: true
   - type: input
@@ -84,6 +84,6 @@ body:
     id: logs
     attributes:
       label: 로그 또는 사진
-      description: 정차 후 HMG-API의 Mods → EV6 KOR Android Auto TBT (test) → Log에서 문제 시각 전후의 AA_TBT_010 로그를 확인해 주세요. 설치 오류를 붙여 넣거나 개인정보를 가린 로그 파일과 사진을 첨부할 수 있습니다.
+      description: 정차 후 HMG-API의 Mods → EV6 KOR Android Auto TBT (test) → Log에서 문제 시각 전후의 AA_TBT 로그를 확인해 주세요. 설치 오류를 붙여 넣거나 개인정보를 가린 로그 파일과 사진을 첨부할 수 있습니다.
       placeholder: |
         GPM_READY, AA_NAV_INIT, AA_STATUS, AA_TURN, AA_DISTANCE, AA_DISPLAY_SENT, AA_DISPLAY_CLEARED, AA_DISCONNECTED 중 확인된 줄을 붙여 주세요. 보이지 않는 줄은 없음이라고 적어 주세요.

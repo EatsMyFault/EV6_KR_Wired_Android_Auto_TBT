@@ -2,6 +2,7 @@ package hmgapi.mods.ev6kr.aa;
 
 import android.content.Context;
 import android.os.Handler;
+import android.os.SystemClock;
 
 import java.lang.reflect.Field;
 
@@ -16,9 +17,10 @@ import hmgapi.hook.Points;
 
 public final class WiredAndroidAutoTbt extends ModEntry {
     private static final String GPM = "com.google.android.projection.sink";
-    private static final String LOG_PREFIX = "AA_TBT_010 ";
+    private static final String LOG_PREFIX = "AA_TBT_011 ";
     private static final int HUD_NO_POINT = 65535;
-    private static final long FRESHNESS_MS = 8000L;
+    private static final long DISPLAY_TIMEOUT_MS = 15_000L;
+    private static final long REFRESH_MS = 2_000L;
 
     private volatile Session session;
 
@@ -110,15 +112,13 @@ public final class WiredAndroidAutoTbt extends ModEntry {
         private final int nativeFocus;
         private final Handler handler;
         private final AaGuidance guidance = new AaGuidance(this);
-        private final Runnable expire = () -> {
-            log("AA_DISPLAY_EXPIRED");
-            guidance.expire();
-        };
+        private final Runnable expire = this::expireDisplay;
         private volatile int epoch;
 
         private Cluster cluster;
         private int shownIcon = -1;
         private int shownMeters = -1;
+        private long lastFullUpdateMs;
         private int turnCount;
         private int distanceCount;
         private String lastTurn;
@@ -184,7 +184,7 @@ public final class WiredAndroidAutoTbt extends ModEntry {
             int meters = (Integer) p.args[0];
             post(() -> {
                 if (sample(++distanceCount)) log("AA_DISTANCE count=" + distanceCount + " meters=" + meters);
-                guidance.distance(owner, meters);
+                guidance.distance(owner, meters, SystemClock.uptimeMillis());
             });
         }
 
@@ -241,22 +241,31 @@ public final class WiredAndroidAutoTbt extends ModEntry {
 
             int unit = meters < 1000 ? Cluster.UNIT_M : Cluster.UNIT_KM;
             float distance = meters < 1000 ? meters : meters / 1000f;
+            long nowMs = SystemClock.uptimeMillis();
             boolean newIcon = shownIcon != turn.icon;
-            if (newIcon || shownMeters != meters) {
+            boolean refresh = newIcon || nowMs - lastFullUpdateMs >= REFRESH_MS;
+            boolean hud = turn.icon >= 64;
+            if (refresh || shownMeters != meters) {
                 cluster.tbtInfo(turn.icon, 0, 0f, distance, 0, 0, unit, 0, -1);
-                if (turn.icon >= 64) {
-                    if (newIcon) cluster.turnListNew(new byte[] {(byte) 0xF2, 1, (byte) turn.icon, 0, 0});
+                if (hud) {
+                    if (refresh) cluster.turnListNew(new byte[] {(byte) 0xF2, 1, (byte) turn.icon, 0, 0});
                     int whole = meters < 1000 ? meters : meters / 1000;
                     int tenths = meters < 1000 ? 0 : Math.min(9, (meters % 1000 + 50) / 100);
                     cluster.tbtSubInfo2C(unit, tenths, whole, 0, 0, HUD_NO_POINT, 0, 0, HUD_NO_POINT);
                 }
-                if (newIcon) log("AA_DISPLAY_SENT icon=" + turn.icon + " meters=" + meters);
+                if (newIcon) log("AA_DISPLAY_SENT icon=" + turn.icon + " meters=" + meters + " hud=" + hud);
                 shownIcon = turn.icon;
                 shownMeters = meters;
+                if (refresh) lastFullUpdateMs = nowMs;
             }
             handler.removeCallbacks(expire);
-            handler.postDelayed(expire, FRESHNESS_MS);
+            handler.postDelayed(expire, DISPLAY_TIMEOUT_MS);
             return true;
+        }
+
+        private void expireDisplay() {
+            log("AA_DISPLAY_EXPIRED distance_timeout_ms=" + DISPLAY_TIMEOUT_MS + " last_meters=" + shownMeters);
+            guidance.hide(SystemClock.uptimeMillis());
         }
 
         @Override

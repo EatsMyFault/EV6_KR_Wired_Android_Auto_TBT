@@ -1,33 +1,21 @@
-# EV6 유선 Android Auto TBT 테스트 v0.1.0
+# EV6 유선 Android Auto TBT 테스트 v0.1.1
 
 한국 내수형 EV6 표준형 5W `CVEV / KOR / 260902`와 HMG-API `1.0.2`를 대상으로 한 실차 검증용 빌드입니다. 진단 v0.1.0에서는 Android Auto 초기화가 성공했고 차량이 `IMAGE` 안내 형식을 제시했습니다. 이 빌드는 `ENUM` 형식으로 다음 회전 코드를 요청합니다. 안내 활성 상태에서 인식 가능한 회전과 그 회전의 거리 콜백이 들어오면 계기판에 표시합니다. HUD는 목록에 넣을 수 있는 회전 아이콘과 거리를 표시합니다.
 
-지원되는 기본 이벤트는 직진·합류, 좌우회전, 유턴, 진출입로, 갈림길, 일부 회전교차로, 도착입니다. 재탐색·안내 종료·연결 해제 때 표시를 지웁니다. 거리 갱신이 8초 동안 없을 때도 표시가 지워집니다. 재탐색이나 갱신 중단 뒤에는 안내가 활성화된 상태에서 회전과 거리 콜백이 다시 들어오면 표시가 복구됩니다. USB 직결에서의 콜백 수신과 화면 표시, 순정 내비·HDA와의 동작은 실차에서 확인해야 합니다.
+지원되는 기본 이벤트는 직진·합류, 좌우회전, 유턴, 진출입로, 갈림길, 일부 회전교차로, 도착입니다. 같은 거리 콜백이 계속 들어오면 약 2초 간격으로 계기판과 지원되는 HUD 안내를 갱신합니다. 거리 콜백이 15초 동안 없으면 표시를 지웁니다. 이후 10초 이내에 같은 연결의 활성 안내에서 마지막 거리와 같거나 더 가까운 거리가 들어오면 표시를 복구합니다. 재탐색·안내 종료·연결 해제 또는 순정 내비로 포커스가 넘어가면 저장된 회전 정보도 지웁니다. USB 직결에서의 콜백 수신과 화면 표시, 순정 내비·HDA와의 동작은 실차에서 확인해야 합니다.
 
-설치 ZIP은 [v0.1.0 사전 릴리즈](https://github.com/EatsMyFault/EV6_KR_Wired_Android_Auto_TBT/releases/tag/v0.1.0)에서 받을 수 있습니다.
+신호대기와 주행 중 표시 끊김이 개선됐는지는 실차 확인이 필요합니다. [v0.1.1 테스트 릴리즈](https://github.com/EatsMyFault/EV6_KR_Wired_Android_Auto_TBT/releases/tag/v0.1.1)
 
-## 설치와 첫 확인
+## 설치 및 업데이트
 
-1. 주차 상태에서 아래 경로에 ZIP을 압축 해제 없이 복사합니다.
+처음 설치하거나 v0.1.0에서 업데이트한다면 **[한국어 설치 가이드](docs/install-guide.md)**를 따라 주세요. 지원 차량 확인, Windows에서 USB 폴더 만들기, HMG-API에서 설치·적용하기, 유선 Android Auto 확인과 문제 제보 방법을 설명합니다.
 
-   ```text
-   USB:/HMGAPI/updates/EV6_KR_Wired_Android_Auto_TBT_v0.1.0_TEST.zip
-   ```
+1. [설치 ZIP](https://github.com/EatsMyFault/EV6_KR_Wired_Android_Auto_TBT/releases/download/v0.1.1/EV6_KR_Wired_Android_Auto_TBT_v0.1.1_TEST.zip)을 압축 해제 없이 `USB:/HMGAPI/updates/`에 복사합니다.
+2. 주차 상태에서 차량 데이터 USB 포트에 꽂고 **HMG-API → Check USB updates → Install** 또는 **Update**를 누릅니다.
+3. **Mods → EV6 KOR Android Auto TBT (test)**가 `0.1.1`이고 **On**인지 확인합니다. **Apply changes**를 누르고 재시작 안내가 나오면 따릅니다.
+4. USB 메모리를 빼고 안드로이드폰을 같은 포트에 직결합니다. Android Auto에서 경로 안내를 시작해 계기판과 HUD를 확인합니다.
 
-2. 차량 데이터 USB 포트에 꽂고 HMG-API에서 **Check USB updates**를 누릅니다. **Mods → EV6 KOR Android Auto TBT (test)**를 켜고 **Apply changes**를 누릅니다. 적용 계획에서 재시작을 요청하면 화면 안내를 따릅니다.
-3. 다른 Android Auto TBT 출력 모드가 켜져 있으면 테스트 중에는 끕니다. 순정 내비 길안내를 종료하고, 설치 USB와 캐빈프로 같은 어댑터를 빼고, 안드로이드폰을 차량 데이터 USB 포트에 직결합니다.
-4. 차량 화면에서 **Android Auto**를 열고 티맵이나 네이버지도로 길안내를 시작합니다. 첫 회전과 거리가 계기판·HUD에 뜨는지 확인합니다. 안내를 종료한 뒤 회전 아이콘이나 로딩 표시가 남는지도 확인합니다. 이후 USB 케이블을 뺍니다.
-5. **Mods → EV6 KOR Android Auto TBT (test) → Log**를 다시 열어 `AA_TBT_010` 줄을 캡처합니다. 사용한 내비 앱, USB 직결 여부, 계기판과 HUD 각각의 결과를 남겨 주세요. [문제 제보 양식](https://github.com/EatsMyFault/EV6_KR_Wired_Android_Auto_TBT/issues/new?template=bug-report.yml)
-
-| 로그 | 의미 |
-| --- | --- |
-| `GPM_READY hooks=8/8` | 기존 7개 지점에 순정 내비 포커스 후크까지 등록됐습니다. |
-| `AA_FORMAT from=IMAGE to=ENUM` | 차량이 제시하는 안내 형식을 회전 코드 형식으로 바꿨습니다. |
-| `AA_NAV_INIT sent=ENUM result=true receiver=true` | GPM 초기화가 성공했고 이번 연결을 식별했습니다. |
-| `AA_STATUS`, `AA_TURN`, `AA_DISTANCE` | 안내 상태, 회전 코드, 거리 콜백입니다. |
-| `AA_DISPLAY_SENT`, `AA_DISPLAY_CLEARED` | 표시 API에 전송하거나 지우기를 요청했습니다. 실제 표시는 화면에서 확인합니다. |
-
-Android Auto 연결이나 표시가 불안정하면 주차 상태에서 테스트 모드를 끄고 **Apply changes**를 누른 뒤 USB를 다시 연결합니다. `ENUM`으로 초기화했는데 `AA_TURN`과 `AA_DISTANCE`가 없거나, `GPM_HOOK_FAILED`가 보이면 해당 줄을 포함해 캡처해주세요.
+설치나 표시 문제가 있으면 [문제 해결](docs/install-guide.md#6-설치나-표시가-안-될-때)과 [문제 제보 양식](https://github.com/EatsMyFault/EV6_KR_Wired_Android_Auto_TBT/issues/new?template=bug-report.yml)을 확인해 주세요.
 
 ## 소스 및 빌드
 
