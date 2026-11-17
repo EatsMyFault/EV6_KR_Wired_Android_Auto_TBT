@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        설치 중 문제가 생겼다면 [설치 가이드](https://github.com/EatsMyFault/EV6_KR_Wired_Android_Auto_TBT#설치와-첫-확인)를 먼저 확인해 주세요.
+        설치 중 문제가 생겼다면 [설치 가이드](https://github.com/EatsMyFault/EV6_KR_Wired_Android_Auto_TBT/blob/main/docs/install-guide.md)를 먼저 확인해 주세요.
 
         이슈는 공개됩니다. 로그와 사진을 첨부하기 전에 VIN, 번호판, 기기 식별 정보, 전화번호, 위치와 목적지를 가려 주세요.
   - type: input
@@ -21,7 +21,7 @@ body:
     attributes:
       label: EV6 Android Auto TBT 모드 버전
       description: 설치를 완료하지 못했다면 받은 ZIP의 버전을 적어 주세요.
-      placeholder: "예시 v0.1.1"
+      placeholder: "예시 v0.1.3"
     validations:
       required: true
   - type: input

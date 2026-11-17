@@ -17,10 +17,14 @@ import hmgapi.hook.Points;
 
 public final class WiredAndroidAutoTbt extends ModEntry {
     private static final String GPM = "com.google.android.projection.sink";
-    private static final String LOG_PREFIX = "AA_TBT_011 ";
+    private static final String LOG_PREFIX = "AA_TBT_013 ";
     private static final int HUD_NO_POINT = 65535;
     private static final long DISPLAY_TIMEOUT_MS = 15_000L;
+    private static final long MAX_SILENCE_MS = 60_000L;
+    private static final int HOLD_DISTANCE_RESERVE_METERS = 200;
+    private static final int HOLD_TRAVEL_BUDGET_METERS_PER_SECOND = 40;
     private static final long REFRESH_MS = 2_000L;
+    private static final long REFRESH_LOG_MS = 5_000L;
 
     private volatile Session session;
 
@@ -119,6 +123,12 @@ public final class WiredAndroidAutoTbt extends ModEntry {
         private int shownIcon = -1;
         private int shownMeters = -1;
         private long lastFullUpdateMs;
+        private long lastRefreshLogMs;
+        private long lastLiveDisplayMs;
+        private boolean holdingDisplay;
+        private long lastTurnMs = -1;
+        private long lastDistanceMs = -1;
+        private long lastExtendedDistanceMs = -1;
         private int turnCount;
         private int distanceCount;
         private String lastTurn;
@@ -147,6 +157,9 @@ public final class WiredAndroidAutoTbt extends ModEntry {
                 turnCount = 0;
                 distanceCount = 0;
                 lastTurn = null;
+                lastTurnMs = -1;
+                lastDistanceMs = -1;
+                lastExtendedDistanceMs = -1;
                 if (enumFormat && accepted && owner != null) guidance.start(owner);
                 else guidance.reset();
             });
@@ -170,6 +183,7 @@ public final class WiredAndroidAutoTbt extends ModEntry {
             // Extended events are not the next maneuver.
             if (event == 32 || event == 33 || event == 34 || (event >= 64 && event <= 67)) return;
             post(() -> {
+                if (guidance.owns(owner)) lastTurnMs = SystemClock.uptimeMillis();
                 String key = "side=" + side + " event=" + event + " angle=" + angle + " number=" + number;
                 if (sample(++turnCount) || !key.equals(lastTurn)) log("AA_TURN count=" + turnCount + " " + key);
                 lastTurn = key;
@@ -179,12 +193,20 @@ public final class WiredAndroidAutoTbt extends ModEntry {
 
         void distance(Param p) {
             int flags = (Integer) p.args[3];
-            if ((flags & 0x300) != 0) return; // Extended route-total and upcoming-turn distances.
             Object owner = owner(p);
+            if ((flags & 0x300) != 0) {
+                // Track arrival for diagnosis. These distances can't drive the current turn.
+                post(() -> {
+                    if (guidance.owns(owner)) lastExtendedDistanceMs = SystemClock.uptimeMillis();
+                });
+                return;
+            }
             int meters = (Integer) p.args[0];
             post(() -> {
+                long nowMs = SystemClock.uptimeMillis();
+                if (guidance.owns(owner)) lastDistanceMs = nowMs;
                 if (sample(++distanceCount)) log("AA_DISTANCE count=" + distanceCount + " meters=" + meters);
-                guidance.distance(owner, meters, SystemClock.uptimeMillis());
+                guidance.distance(owner, meters, nowMs);
             });
         }
 
@@ -199,8 +221,9 @@ public final class WiredAndroidAutoTbt extends ModEntry {
 
         void end(Object owner, String source) {
             post(() -> {
+                boolean current = owner == null || guidance.owns(owner);
                 guidance.end(owner);
-                if (!sawInit) return;
+                if (!sawInit || !current) return;
                 log("AA_DISCONNECTED source=" + source + " turns=" + turnCount + " distances=" + distanceCount);
                 sawInit = false;
             });
@@ -239,38 +262,82 @@ public final class WiredAndroidAutoTbt extends ModEntry {
                 return false;
             }
 
-            int unit = meters < 1000 ? Cluster.UNIT_M : Cluster.UNIT_KM;
-            float distance = meters < 1000 ? meters : meters / 1000f;
             long nowMs = SystemClock.uptimeMillis();
-            boolean newIcon = shownIcon != turn.icon;
-            boolean refresh = newIcon || nowMs - lastFullUpdateMs >= REFRESH_MS;
-            boolean hud = turn.icon >= 64;
-            if (refresh || shownMeters != meters) {
-                cluster.tbtInfo(turn.icon, 0, 0f, distance, 0, 0, unit, 0, -1);
-                if (hud) {
-                    if (refresh) cluster.turnListNew(new byte[] {(byte) 0xF2, 1, (byte) turn.icon, 0, 0});
-                    int whole = meters < 1000 ? meters : meters / 1000;
-                    int tenths = meters < 1000 ? 0 : Math.min(9, (meters % 1000 + 50) / 100);
-                    cluster.tbtSubInfo2C(unit, tenths, whole, 0, 0, HUD_NO_POINT, 0, 0, HUD_NO_POINT);
-                }
-                if (newIcon) log("AA_DISPLAY_SENT icon=" + turn.icon + " meters=" + meters + " hud=" + hud);
-                shownIcon = turn.icon;
-                shownMeters = meters;
-                if (refresh) lastFullUpdateMs = nowMs;
+            if (holdingDisplay) {
+                log("AA_DISPLAY_RESUMED silence_ms=" + (nowMs - lastLiveDisplayMs) + " meters=" + meters);
+                holdingDisplay = false;
             }
+            lastLiveDisplayMs = nowMs;
+            sendDisplay(turn.icon, meters, nowMs);
             handler.removeCallbacks(expire);
             handler.postDelayed(expire, DISPLAY_TIMEOUT_MS);
             return true;
         }
 
+        private void sendDisplay(int icon, int meters, long nowMs) {
+            int unit = meters < 1000 ? Cluster.UNIT_M : Cluster.UNIT_KM;
+            float distance = meters < 1000 ? meters : meters / 1000f;
+            boolean newIcon = shownIcon != icon;
+            boolean refresh = newIcon || nowMs - lastFullUpdateMs >= REFRESH_MS;
+            boolean hud = icon >= 64;
+            if (refresh || shownMeters != meters) {
+                cluster.tbtInfo(icon, 0, 0f, distance, 0, 0, unit, 0, -1);
+                if (hud) {
+                    if (refresh) cluster.turnListNew(new byte[] {(byte) 0xF2, 1, (byte) icon, 0, 0});
+                    int whole = meters < 1000 ? meters : meters / 1000;
+                    int tenths = meters < 1000 ? 0 : Math.min(9, (meters % 1000 + 50) / 100);
+                    cluster.tbtSubInfo2C(unit, tenths, whole, 0, 0, HUD_NO_POINT, 0, 0, HUD_NO_POINT);
+                }
+                if (newIcon || (refresh && nowMs - lastRefreshLogMs >= REFRESH_LOG_MS)) {
+                    log((newIcon ? "AA_DISPLAY_SENT" : "AA_DISPLAY_REFRESH")
+                            + " icon=" + icon + " meters=" + meters
+                            + " source=" + (holdingDisplay ? "hold" : "live")
+                            + " cluster_requested=true hud_requested=" + hud);
+                    lastRefreshLogMs = nowMs;
+                }
+                shownIcon = icon;
+                shownMeters = meters;
+                if (refresh) lastFullUpdateMs = nowMs;
+            }
+        }
+
         private void expireDisplay() {
-            log("AA_DISPLAY_EXPIRED distance_timeout_ms=" + DISPLAY_TIMEOUT_MS + " last_meters=" + shownMeters);
-            guidance.hide(SystemClock.uptimeMillis());
+            if (shownIcon < 0) return;
+            // Age increases from the last live display update. Replaying the cached pair never renews it.
+            long limitMs = silenceLimitMs(shownMeters);
+            boolean gpmGuiding = Car.androidAutoGuiding(context);
+            long nowMs = SystemClock.uptimeMillis();
+            long silenceMs = nowMs - lastLiveDisplayMs;
+            if (silenceMs < limitMs && gpmGuiding && mod.enabled() && !Car.carPlayGuiding(context)) {
+                if (!holdingDisplay) {
+                    holdingDisplay = true;
+                    log("AA_DISPLAY_HOLD meters=" + shownMeters + " limit_ms=" + limitMs);
+                }
+                sendDisplay(shownIcon, shownMeters, nowMs);
+                handler.postDelayed(expire, Math.max(0L, Math.min(REFRESH_MS,
+                        lastLiveDisplayMs + limitMs - SystemClock.uptimeMillis())));
+                return;
+            }
+
+            log("AA_DISPLAY_EXPIRED distance_timeout_ms=" + DISPLAY_TIMEOUT_MS + " last_meters=" + shownMeters
+                    + " silence_ms=" + silenceMs + " limit_ms=" + limitMs
+                    + " turn_age_ms=" + age(nowMs, lastTurnMs) + " distance_age_ms=" + age(nowMs, lastDistanceMs)
+                    + " extended_distance_age_ms=" + age(nowMs, lastExtendedDistanceMs));
+            guidance.hide(nowMs);
+            log("AA_EXPIRED_GUIDANCE gpm_guiding=" + gpmGuiding);
+        }
+
+        private static long silenceLimitMs(int meters) {
+            // Use the last reported distance only to limit how long it can be reused.
+            long budgetMs = (meters - HOLD_DISTANCE_RESERVE_METERS) * 1000L
+                    / HOLD_TRAVEL_BUDGET_METERS_PER_SECOND;
+            return Math.max(DISPLAY_TIMEOUT_MS, Math.min(MAX_SILENCE_MS, budgetMs));
         }
 
         @Override
-        public void clear() {
+        public void clear(String reason) {
             handler.removeCallbacks(expire);
+            holdingDisplay = false;
             if (shownIcon >= 0 && !Car.carPlayGuiding(context)) {
                 cluster.tbtInfo(8, 0, 0f, 0f, -3, 0, 15, 0, -1);
                 if (shownIcon >= 64) {
@@ -278,7 +345,7 @@ public final class WiredAndroidAutoTbt extends ModEntry {
                     cluster.turnListNew(new byte[] {(byte) 0xF2, 0});
                     cluster.turnListNew(new byte[] {(byte) 0xF2, 0});
                 }
-                log("AA_DISPLAY_CLEARED");
+                log("AA_DISPLAY_CLEARED reason=" + reason);
             }
             shownIcon = -1;
             shownMeters = -1;
@@ -286,6 +353,10 @@ public final class WiredAndroidAutoTbt extends ModEntry {
 
         void log(String message) {
             mod.log(LOG_PREFIX + message);
+        }
+
+        private static long age(long nowMs, long lastMs) {
+            return lastMs < 0 ? -1 : nowMs - lastMs;
         }
 
         private static boolean sample(int count) {

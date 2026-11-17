@@ -8,7 +8,7 @@ sdk=${ANDROID_HOME:-$HOME/Android}
 android_jar="$sdk/platforms/android-29/android.jar"
 d8="$sdk/build-tools/35.0.0/d8"
 signing=hmgapi.engine.Signing
-archive=EV6_KR_Wired_Android_Auto_TBT_v0.1.1_TEST.zip
+archive=EV6_KR_Wired_Android_Auto_TBT_v0.1.3_TEST.zip
 
 [[ -f "$android_jar" && -x "$d8" ]] || { echo "Android 29 and build-tools 35.0.0 are required." >&2; exit 1; }
 [[ -f "$hmg_classes/hmgapi/hook/ModContext.class" && -f "$hmg_classes/hmgapi/engine/Signing.class" ]] || {

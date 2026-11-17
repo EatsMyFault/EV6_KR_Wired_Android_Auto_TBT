@@ -8,7 +8,7 @@ final class AaGuidance {
 
     interface Output {
         boolean show(AaManeuver turn, int meters);
-        void clear();
+        void clear(String reason);
     }
 
     private final Output output;
@@ -28,7 +28,7 @@ final class AaGuidance {
     }
 
     void start(Object receiver) {
-        expire();
+        expire("receiver_init");
         this.receiver = receiver;
         status = 0;
         if (focusReceiver != receiver) {
@@ -41,14 +41,14 @@ final class AaGuidance {
         if (!owns(receiver) || status == code) return;
         status = code;
         if (code == ACTIVE) publish();
-        else expire();
+        else expire(code == 3 ? "rerouting" : "inactive_status");
     }
 
     void turn(Object receiver, int event, int side, int angle, int number) {
         if (!canReceive(receiver)) return;
         AaManeuver next = AaManeuver.from(event, side, angle, number);
         if (next == null) {
-            expire();
+            expire("unsupported_turn");
             return;
         }
         if (maneuver != null && maneuver.icon == next.icon && maneuver.direction == next.direction
@@ -59,7 +59,7 @@ final class AaGuidance {
             }
             return;
         }
-        expire();
+        expire("turn_changed");
         maneuver = next;
         maneuverEvent = event;
         maneuverNumber = number;
@@ -68,12 +68,12 @@ final class AaGuidance {
     void distance(Object receiver, int meters, long nowMs) {
         if (!canReceive(receiver) || maneuver == null) return;
         if (meters < 0 || meters > MAX_DISTANCE_METERS) {
-            expire();
+            expire("invalid_distance");
             return;
         }
         // A farther point may be a new turn. Wait for its own maneuver before drawing it.
         if (recoverUntilMs != 0 && (nowMs >= recoverUntilMs || meters > this.meters)) {
-            expire();
+            expire("invalid_recovery");
             return;
         }
         recoverUntilMs = 0;
@@ -86,12 +86,12 @@ final class AaGuidance {
         if (focusReceiver != receiver || this.nativeFocus != nativeFocus) {
             focusReceiver = receiver;
             this.nativeFocus = nativeFocus;
-            if (nativeFocus) expire();
+            if (nativeFocus) expire("native_focus");
         }
     }
 
     void end(Object receiver) {
-        if (receiver == null || owns(receiver)) reset();
+        if (receiver == null || owns(receiver)) reset("disconnect");
         else if (focusReceiver == receiver) {
             focusReceiver = null;
             nativeFocus = false;
@@ -99,7 +99,11 @@ final class AaGuidance {
     }
 
     void reset() {
-        expire();
+        reset("reset");
+    }
+
+    private void reset(String reason) {
+        expire(reason);
         receiver = null;
         focusReceiver = null;
         nativeFocus = false;
@@ -109,17 +113,17 @@ final class AaGuidance {
     void hide(long nowMs) {
         if (!shown) return;
         recoverUntilMs = nowMs + RECOVERY_WINDOW_MS;
-        clear();
+        clear("distance_timeout");
     }
 
-    private void expire() {
+    private void expire(String reason) {
         maneuver = null;
         meters = -1;
         recoverUntilMs = 0;
-        clear();
+        clear(reason);
     }
 
-    private boolean owns(Object receiver) {
+    boolean owns(Object receiver) {
         return receiver != null && this.receiver == receiver;
     }
 
@@ -130,12 +134,12 @@ final class AaGuidance {
     private void publish() {
         if (nativeFocus || status != ACTIVE || maneuver == null || meters < 0) return;
         if (output.show(maneuver, meters)) shown = true;
-        else expire();
+        else expire("output_unavailable");
     }
 
-    private void clear() {
+    private void clear(String reason) {
         if (!shown) return;
         shown = false;
-        output.clear();
+        output.clear(reason);
     }
 }
